@@ -45,20 +45,42 @@ main{flex:1;overflow:auto;padding:24px}
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
 .panel h2{margin:0 0 12px;font-size:16px}
 iframe{width:100%;height:100%;border:0;background:var(--surface)}
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th,td{text-align:left;padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
-th{color:var(--muted);font-weight:500;font-size:13px}
+
+/* 모바일 반응형 */
+.table-wrap { width: 100%; }
+.setting-table { width: 100%; border-collapse: collapse; }
+.setting-table th, .setting-table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; text-align: left; }
+.setting-table th { color: var(--muted); font-weight: 500; font-size: 13px; }
+
 .in{width:100%;padding:8px 10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit;border-radius:6px;outline:none}
 .in:focus{border-color:var(--accent)}
 .btn{padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{background:var(--bg)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
+/* 로딩 스피너 애니메이션 */
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; }
+.spinner-dark { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; margin-bottom: 12px; }
+
+@media (max-width: 768px) {
+  .setting-table thead { display: none; }
+  .setting-table, .setting-table tbody, .setting-table tr, .setting-table td { display: block; width: 100%; }
+  .setting-table tr { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; padding: 12px; }
+  .setting-table td { border: none; padding: 6px 0; display: flex; flex-direction: column; gap: 4px; }
+  
+  /* ⭐️ 일반 항목들은 라벨을 표시하되, '관리' 컬럼(삭제 버튼 영역)은 data-label이 없거나 비워둠 */
+  .setting-table td:not(:last-child)::before { content: attr(data-label); font-size: 12px; color: var(--muted); font-weight: 600; }
+  
+  .setting-table td:last-child { align-items: flex-end; margin-top: 6px; }
+}
+
 .backdrop{display:none}
 @media (max-width:720px){
   .sidebar{position:fixed;inset:0 auto 0 0;z-index:20;transform:translateX(-100%);transition:transform .2s}
   .app.open .sidebar{transform:none}
   .app.open .backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10}
+  main{padding:16px}
 }
 </style>
 </head>
@@ -66,8 +88,9 @@ th{color:var(--muted);font-weight:500;font-size:13px}
 
 <div id="authLoading" style="display:flex;justify-content:center;align-items:center;height:100vh;background:var(--bg);color:var(--text);">
   <div style="text-align:center;">
-    <h3>대시보드 로딩 중...</h3>
-    <p style="color:var(--muted);font-size:14px;">잠시만 기다려주세요.</p>
+    <div class="spinner-dark"></div>
+    <h3 style="margin:0 0 4px;font-size:16px;">대시보드 로딩 중...</h3>
+    <p style="color:var(--muted);font-size:13px;margin:0;">잠시만 기다려주세요.</p>
   </div>
 </div>
 
@@ -95,7 +118,6 @@ let MENUS = [
   { id: 'prefs', label: '설정', icon: 'settings', view: 'settings', url: '', target: 'embed' }
 ];
 
-// 1. 토큰 검증 및 메뉴 데이터 수신
 async function checkAuth() {
   const savedToken = sessionStorage.getItem('dash_auth_token');
   if (!savedToken) {
@@ -121,12 +143,18 @@ async function checkAuth() {
   }
 }
 
-// 2. PIN 입력 후 토큰 및 메뉴 데이터 수신
 async function verifyPin() {
   const pinInput = document.getElementById('pinInput');
+  const verifyBtn = document.getElementById('verifyBtn');
   if (!pinInput) return;
+  
   const pin = pinInput.value.trim();
   if (!pin) return;
+
+  if (verifyBtn) {
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = '<span class="spinner"></span> 확인 중...';
+  }
 
   try {
     const response = await fetch(`${GAS_WEB_APP_URL}?pin=${pin}`);
@@ -140,9 +168,17 @@ async function verifyPin() {
       document.getElementById('app').style.display = 'flex';
       initDashboard();
     } else {
+      if (verifyBtn) {
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = '확인';
+      }
       showPinModal(res.message || "PIN 번호가 틀렸습니다.");
     }
   } catch (err) {
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.textContent = '확인';
+    }
     showPinModal("서버 통신 중 오류가 발생했습니다.");
   }
 }
@@ -159,7 +195,7 @@ function showPinModal(errorMsg = "") {
       <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">접속 PIN 번호를 입력하세요.</p>
       <input type="password" id="pinInput" placeholder="PIN 번호 입력" style="width:100%;padding:12px;margin-bottom:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;text-align:center;font-size:16px;letter-spacing:4px;" autofocus>
       ${errorMsg ? `<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">${errorMsg}</div>` : ''}
-      <button onclick="verifyPin()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">확인</button>
+      <button id="verifyBtn" onclick="verifyPin()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">확인</button>
     </div>
   `;
   document.getElementById('pinInput').onkeydown = (e) => { if (e.key === 'Enter') verifyPin(); };
@@ -220,27 +256,27 @@ function renderSettingsView() {
       <h2>메뉴 설정</h2>
       <p style="color:var(--muted);margin:0 0 16px;font-size:13px;">아이콘, 이름, 페이지 URL을 직접 수정하거나 메뉴를 추가/삭제하세요.</p>
       <div class="table-wrap">
-        <table>
+        <table class="setting-table">
           <thead>
-            <tr><th>아이콘</th><th>이름</th><th>페이지 URL</th><th>열기 방식</th><th>관리</th></tr>
+            <tr><th style="width:120px;">아이콘</th><th style="width:160px;">이름</th><th style="width:280px;">페이지 URL</th><th style="width:120px;">열기 방식</th><th style="width:80px;">관리</th></tr>
           </thead>
           <tbody>
             ${MENUS.map((m, i) => `
               <tr>
-                <td>
+                <td data-label="아이콘">
                   <select class="in" onchange="MENUS[${i}].icon=this.value">
                     ${Object.keys(iconNames).map(k => `<option value="${k}" ${m.icon === k ? 'selected' : ''}>${iconNames[k]}</option>`).join('')}
                   </select>
                 </td>
-                <td><input class="in" value="${esc(m.label)}" onchange="MENUS[${i}].label=this.value.trim()"></td>
-                <td><input class="in" value="${esc(m.url)}" placeholder="https://..." onchange="MENUS[${i}].url=this.value.trim()"></td>
-                <td>
+                <td data-label="이름"><input class="in" value="${esc(m.label)}" onchange="MENUS[${i}].label=this.value.trim()"></td>
+                <td data-label="페이지 URL"><input class="in" value="${esc(m.url)}" placeholder="https://..." onchange="MENUS[${i}].url=this.value.trim()"></td>
+                <td data-label="열기 방식">
                   <select class="in" onchange="MENUS[${i}].target=this.value">
                     <option value="embed" ${m.target !== 'blank' ? 'selected' : ''}>메인 섹션</option>
                     <option value="blank" ${m.target === 'blank' ? 'selected' : ''}>새 탭</option>
                   </select>
                 </td>
-                <td><button class="btn" onclick="MENUS.splice(${i},1); main.innerHTML=renderSettingsView();">삭제</button></td>
+                <td data-label="관리"><button class="btn" style="width:100%;justify-content:center;" onclick="MENUS.splice(${i},1); main.innerHTML=renderSettingsView();">삭제</button></td>
               </tr>
             `).join('')}
           </tbody>
@@ -256,34 +292,21 @@ function renderSettingsView() {
 
 function addDashboardMenu() {
   const settingsIndex = MENUS.findIndex(m => m.view === 'settings' || m.id === 'prefs');
-  
-  const newMenu = {
-    id: 'menu-' + Date.now().toString(36),
-    label: '새 메뉴',
-    icon: 'file',
-    view: '',
-    url: '',
-    target: 'embed',
-    locked: false
-  };
+  const newMenu = { id: 'menu-' + Date.now().toString(36), label: '새 메뉴', icon: 'file', view: '', url: '', target: 'embed', locked: false };
 
   if (settingsIndex !== -1) {
-    // 설정 메뉴가 존재하면 설정 메뉴 바로 앞에 삽입
     MENUS.splice(settingsIndex, 0, newMenu);
   } else {
-    // 설정 메뉴를 못 찾았을 경우 안전하게 맨 뒤에 추가
     MENUS.push(newMenu);
   }
-
   main.innerHTML = renderSettingsView();
 }
 
-// 수정된 메뉴 목록을 GAS 백엔드로 전송하여 시트에 저장
 async function saveDashboardMenus() {
   const saveBtn = document.getElementById('saveBtn');
   if (saveBtn) {
     saveBtn.disabled = true;
-    saveBtn.textContent = '저장 중...';
+    saveBtn.innerHTML = '<span class="spinner"></span> 저장 중...';
   }
 
   try {
