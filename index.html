@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>대시보드</title>
+<style>
+:root{
+  --bg:#f5f6fa;--surface:#fff;--text:#1f2430;--muted:#6b7280;--border:#e5e7eb;
+  --accent:#4f46e5;--accent-bg:#eef2ff;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@import url('https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/subsets/Paperlogy-dynamic-subset.css');
+* { 
+  font-family: "Paperlogy", sans-serif; 
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#13151b;--surface:#1c1f27;--text:#e8eaf0;--muted:#9aa1b0;--border:#2a2e39;--accent:#8b8ff5;--accent-bg:#262a40}
+}
+:root[data-theme="dark"]{--bg:#13151b;--surface:#1c1f27;--text:#e8eaf0;--muted:#9aa1b0;--border:#2a2e39;--accent:#8b8ff5;--accent-bg:#262a40}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;font-size:15px}
+.app{display:flex;height:100%}
+.sidebar{width:230px;background:var(--surface);border-right:1px solid var(--border);padding:18px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;padding:6px 12px 16px;white-space:nowrap}
+.sidebar{transition:width .2s}
+.app.collapsed .sidebar{width:68px}
+.app.collapsed .nav .lbl,.app.collapsed .brand .t{display:none}
+.app.collapsed .nav a,.app.collapsed .brand{justify-content:center;padding-left:0;padding-right:0}
+.ico-svg{width:20px;height:20px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.frame-wrap{display:flex;flex-direction:column;height:100%}
+.frame-wrap iframe{flex:1;height:auto;min-height:0}
+.frame-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 16px;font-size:13px;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border)}
+.frame-bar a{color:var(--accent);text-decoration:none;white-space:nowrap;font-weight:600}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--muted);text-decoration:none}
+.nav a:hover{background:var(--bg);color:var(--text)}
+.nav a.active{background:var(--accent-bg);color:var(--accent);font-weight:600}
+.content{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;align-items:center;gap:12px;padding:2px 12px;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar h1{font-size:17px;margin:0;flex:1}
+.menu-btn{display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;width:36px;height:36px;padding:0;cursor:pointer}
+.menu-btn:hover{background:var(--bg)}
+main{flex:1;overflow:auto;padding:24px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.card .label{color:var(--muted);font-size:13px}
+.card .value{font-size:26px;font-weight:700;margin-top:6px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.panel h2{margin:0 0 12px;font-size:16px}
+iframe{width:100%;height:100%;border:0;background:var(--surface)}
+.backdrop{display:none}
+@media (max-width:720px){
+  .sidebar{position:fixed;inset:0 auto 0 0;z-index:20;transform:translateX(-100%);transition:transform .2s;padding-top:calc(18px + env(safe-area-inset-top,0px))}
+  .app.open .sidebar{transform:none}
+  .app.open .backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10}
+  .app.collapsed .sidebar{width:230px}
+  .app.collapsed .nav .lbl,.app.collapsed .brand .t{display:inline}
+  .app.collapsed .nav a,.app.collapsed .brand{justify-content:flex-start;padding-left:12px;padding-right:12px}
+  main{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- 권한 체크 로딩 중 화면 -->
+<div id="authLoading" style="display:flex;justify-content:center;align-items:center;height:100vh;background:var(--bg);color:var(--text);">
+  <div style="text-align:center;">
+    <h3>Google 계정 권한 확인 중...</h3>
+    <p style="color:var(--muted);font-size:14px;">잠시만 기다려주세요.</p>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none;">
+  <aside class="sidebar">
+    <div class="brand"></div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+  <div class="content">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="메뉴 접기/펼치기"></button>
+      <h1 id="title"></h1>
+    </header>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script>
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxZb1qp-zevIs779jqfNvFBInPWWGbG9WOScRsjjlumrYJ6UjmImugqS6w1EiYsb9z0/exec"; 
+
+async function checkAuth() {
+  const savedToken = sessionStorage.getItem('dash_auth_token');
+
+  if (!savedToken) {
+    showPinModal();
+    return;
+  }
+
+  try {
+    const response = await fetch(`${GAS_WEB_APP_URL}?token=${savedToken}`);
+    const res = await response.json();
+
+    if (res.status === 'success') {
+      document.getElementById('authLoading').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      loadMenusAndInit();
+    } else {
+      sessionStorage.removeItem('dash_auth_token');
+      showPinModal("인증이 만료되었습니다. 다시 로그인하세요.");
+    }
+  } catch (err) {
+    showPinModal("서버 통신 중 오류가 발생했습니다.");
+  }
+}
+
+// 2. PIN 입력 후 토큰 발급받기
+async function verifyPin() {
+  const pinInput = document.getElementById('pinInput');
+  if (!pinInput) return;
+  
+  const pin = pinInput.value.trim();
+  if (!pin) return;
+
+  try {
+    const response = await fetch(`${GAS_WEB_APP_URL}?pin=${pin}`);
+    const res = await response.json();
+
+    if (res.status === 'success' && res.token) {
+      sessionStorage.setItem('dash_auth_token', res.token);
+      
+      document.getElementById('authLoading').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      loadMenusAndInit();
+    } else {
+      showPinModal(res.message || "PIN 번호가 틀렸습니다.");
+    }
+  } catch (err) {
+    showPinModal("서버 통신 중 오류가 발생했습니다.");
+  }
+}
+
+function showPinModal(errorMsg = "") {
+  const loadingEl = document.getElementById('authLoading');
+  loadingEl.style.display = 'flex';
+  loadingEl.style.background = 'rgba(0, 0, 0, 0.6)';
+  
+  loadingEl.innerHTML = `
+    <div style="background:var(--surface);padding:32px;border-radius:16px;border:1px solid var(--border);width:360px;text-align:center;box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
+      <div style="font-size:32px;margin-bottom:8px;">🔒</div>
+      <h2 style="margin:0 0 8px;color:var(--text);font-size:18px;">대시보드 잠금</h2>
+      <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">접속 PIN 번호를 입력하세요.</p>
+      
+      <input type="password" id="pinInput" placeholder="PIN 번호 입력" style="width:100%;padding:12px;margin-bottom:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;box-sizing:border-box;text-align:center;font-size:16px;letter-spacing:4px;" autofocus>
+      
+      ${errorMsg ? `<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">${errorMsg}</div>` : ''}
+      
+      <button onclick="verifyPin()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">확인</button>
+    </div>
+  `;
+
+  document.getElementById('pinInput').onkeydown = (e) => {
+    if (e.key === 'Enter') verifyPin();
+  };
+}
+
+const ICONS = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18.5 14.3c1.8.8 3 2.6 3 5.7"/>',
+  chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
+  settings: '<path d="M4 6h10"/><path d="M18 6h2"/><circle cx="16" cy="6" r="2"/><path d="M4 12h2"/><path d="M10 12h10"/><circle cx="8" cy="12" r="2"/><path d="M4 18h12"/><circle cx="18" cy="18" r="2"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>',
+  cart: '<circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
+  panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>'
+};
+
+const DEFAULT_MENUS = [
+  { id: 'home',    label: '업무 라이브러리', icon: 'home', view: 'home',     url: '', target: 'embed' },
+  { id: 'users',   label: '프로젝트', icon: 'users', view: 'users',    url: '', target: 'embed' },
+  { id: 'prefs',   label: '설정',   icon: 'settings', view: 'settings', url: GAS_WEB_APP_URL, target: 'embed' }
+];
+
+const VIEWS = { home: viewHome, users: viewUsers };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ico = n => `<svg class="ico-svg" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ICONS.file}</svg>`;
+
+let MENUS = DEFAULT_MENUS;
+const $ = s => document.querySelector(s);
+const app = $('#app'), main = $('#main'), nav = $('#nav');
+
+async function loadMenusAndInit() {
+  try {
+    const res = await fetch(`${GAS_WEB_APP_URL}?action=getMenus`);
+    const data = await res.json();
+    
+    if (data.status === 'success' && data.menus && data.menus.length > 0) {
+      MENUS = data.menus.map(m => {
+        if (m.view === 'settings' || m.id === 'prefs' || m.label === '설정') {
+          m.url = GAS_WEB_APP_URL;
+        }
+        return m;
+      });
+      console.log(data.menus);
+    }
+  } catch (err) {
+    console.warn("메뉴를 불러오지 못해 기본 메뉴를 사용합니다.", err);
+  }
+  
+  // 2. 전역 MENUS가 채워진 상태로 대시보드 초기화 및 라우팅을 실행합니다.
+  initDashboard();
+}
+
+function route(){
+  const hash = location.hash.slice(1);
+  let m = MENUS.find(x => x.id === hash || x.view === hash);
+  
+  // 만약 해시가 비어있거나 매칭되는 메뉴가 없다면 첫 번째 메뉴 선택
+  if (!m && MENUS.length > 0) {
+    m = MENUS[0];
+  }
+  if (!m) return;
+
+  renderNav(m.id || m.view);
+  $('#title').textContent = m.label;
+  document.title = m.label + ' · 대시보드';
+
+  if (m.url && m.url.trim() !== '') {
+    main.style.padding = '0';
+    main.innerHTML = `<div class="frame-wrap"><iframe src="${esc(m.url)}" title="${esc(m.label)}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"></iframe></div>`;
+  } else {
+    main.style.padding = '';
+    const viewFunc = VIEWS[m.view];
+    main.innerHTML = viewFunc ? viewFunc() : viewEmpty();
+  }
+  
+  main.scrollTop = 0;
+  app.classList.remove('open');
+}
+const newTab = m => !!m.url && m.target === 'blank' && m.view !== 'settings';
+function renderNav(activeId){
+  nav.innerHTML = MENUS.map(m => {
+    const isBlank = newTab(m);
+    const href = isBlank ? esc(m.url) : '#' + (m.id || m.view);
+    return `<a href="${href}"${isBlank ? ' target="_blank" rel="noopener noreferrer"' : ''} data-id="${m.id}" title="${esc(m.label)}" class="${(m.id === activeId || m.view === activeId) ? 'active' : ''}">${ico(m.icon)}<span class="lbl">${esc(m.label)}</span></a>`;
+  }).join('');
+}
+
+function initDashboard(){
+  window.addEventListener('hashchange', route);
+  try { if (localStorage.getItem('dash.collapsed') === '1') app.classList.add('collapsed'); } catch (e) {}
+  $('.brand').innerHTML = ico('chart') + '<span class="t">Dashboard</span>';
+  $('#menuBtn').innerHTML = ico('panel');
+  $('#menuBtn').onclick = () => {
+    if (window.innerWidth <= 720) { app.classList.toggle('open'); return; }
+    const c = app.classList.toggle('collapsed');
+    try { localStorage.setItem('dash.collapsed', c ? '1' : '0'); } catch (e) {}
+  };
+  $('#backdrop').onclick = () => app.classList.remove('open');
+  route();
+}
+
+// 기본 뷰 함수들
+function viewHome(){
+  return `
+  <div class="cards">
+    <div class="card"><div class="label">오늘 방문</div><div class="value">1,284</div></div>
+    <div class="card"><div class="label">신규 가입</div><div class="value">56</div></div>
+    <div class="card"><div class="label">매출</div><div class="value">₩3.2M</div></div>
+    <div class="card"><div class="label">오류율</div><div class="value">0.4%</div></div>
+  </div>
+  <div class="panel"><h2>최근 활동</h2><p style="color:var(--muted);margin:0">왼쪽 메뉴를 클릭하면 이 영역에 해당 페이지가 표시됩니다.</p></div>`;
+}
+function viewUsers(){
+  const rows = [['김민수','관리자','활성'],['이서연','편집자','활성'],['박지훈','뷰어','대기'],['최유진','편집자','활성']];
+  return `<div class="panel"><h2>프로젝트 목록</h2><div class="table-wrap"><table>
+    <tr><th>이름</th><th>권한</th><th>상태</th></tr>
+    ${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+  </table></div></div>`;
+}
+function viewEmpty(){
+  return `<div class="panel"><h2>연결된 페이지가 없습니다</h2>
+    <p style="color:var(--muted);margin:0">설정 메뉴에서 이 메뉴의 페이지 URL을 입력하세요.</p></div>`;
+}
+
+checkAuth();
+</script>
+</body>
+</html>
