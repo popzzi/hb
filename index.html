@@ -243,7 +243,6 @@ function route(){
     
     let targetUrl = m.url.trim();
     
-    // ⭐️ 구글 앱스 스크립트(GAS) 등 외부 웹 앱 링크일 때만 세션 토큰을 동적으로 결합
     if (targetUrl.includes('script.google.com') || targetUrl.includes('/exec')) {
       const token = sessionStorage.getItem('dash_auth_token') || '';
       if (token) {
@@ -266,6 +265,7 @@ function route(){
 function renderSettingsView() {
   const iconNames = { home: '홈', users: '사용자', chart: '차트', settings: '설정', file: '문서', globe: '웹', cart: '장바구니', bell: '알림' };
   
+  // 데이터 순서와 상관없이 'prefs' ID를 가진 메뉴를 항상 마지막으로 보내는 정렬 처리
   const sortedMenus = [...MENUS].sort((a, b) => {
     if (a.id === 'prefs') return 1;
     if (b.id === 'prefs') return -1;
@@ -354,7 +354,13 @@ async function saveDashboardMenus() {
 const newTab = m => !!m.url && m.target === 'blank' && m.view !== 'settings';
 
 function renderNav(activeId){
-  nav.innerHTML = MENUS.map(m => {
+  const sortedMenus = [...MENUS].sort((a, b) => {
+    if (a.id === 'prefs') return 1;
+    if (b.id === 'prefs') return -1;
+    return 0;
+  });
+
+  nav.innerHTML = sortedMenus.map(m => {
     const isBlank = newTab(m);
     const targetId = m.id || m.view;
     const href = isBlank ? esc(m.url) : '#' + targetId;
