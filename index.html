@@ -13,7 +13,8 @@
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 }
-* { font-family: "Paperlogy", sans-serif !important;}
+
+body { font-family: "Paperlogy", sans-serif !important;}
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){--bg:#13151b;--surface:#1c1f27;--text:#e8eaf0;--muted:#9aa1b0;--border:#2a2e39;--accent:#8b8ff5;--accent-bg:#262a40}
 }
@@ -329,7 +330,7 @@ async function saveDashboardMenus() {
       body: JSON.stringify(MENUS)
     });
     
-    alert('설정이 구글 시트에 성공적으로 저장되었습니다!');
+    alert('설정이 저장되었습니다!');
     location.reload();
   } catch (err) {
     alert('저장 중 오류가 발생했습니다.');
