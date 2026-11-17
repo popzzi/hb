@@ -39,12 +39,12 @@ body{background:var(--bg);color:var(--text);font-size:15px}
 .topbar h1{font-size:17px;margin:0;flex:1}
 .menu-btn{display:flex;align-items:center;justify-content:center;background:none;border:1px solid var(--border);color:var(--text);border-radius:8px;width:36px;height:36px;padding:0;cursor:pointer}
 .menu-btn:hover{background:var(--bg)}
-main{flex:1;overflow:auto;padding:24px}
+main{flex:1;overflow:auto;}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
 .card .label{color:var(--muted);font-size:13px}
 .card .value{font-size:26px;font-weight:700;margin-top:6px}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.panel{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:20px}
 .panel h2{margin:0 0 12px;font-size:16px}
 iframe{width:100%;height:100%;border:0;background:var(--surface)}
 
@@ -70,10 +70,7 @@ iframe{width:100%;height:100%;border:0;background:var(--surface)}
   .setting-table, .setting-table tbody, .setting-table tr, .setting-table td { display: block; width: 100%; }
   .setting-table tr { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; padding: 12px; }
   .setting-table td { border: none; padding: 6px 0; display: flex; flex-direction: column; gap: 4px; }
-  
-  /* ⭐️ 일반 항목들은 라벨을 표시하되, '관리' 컬럼(삭제 버튼 영역)은 data-label이 없거나 비워둠 */
   .setting-table td:not(:last-child)::before { content: attr(data-label); font-size: 12px; color: var(--muted); font-weight: 600; }
-  
   .setting-table td:last-child { align-items: flex-end; margin-top: 6px; }
 }
 
@@ -119,6 +116,10 @@ let MENUS = [
   { id: 'users', label: '프로젝트', icon: 'users', view: 'users', url: '', target: 'embed' },
   { id: 'prefs', label: '설정', icon: 'settings', view: 'settings', url: '', target: 'embed' }
 ];
+
+// 설정 화면에서만 사용하는 임시 편집용 배열 및 상태 관리 변수
+let editMenus = [];
+let isEditingSettings = false;
 
 async function checkAuth() {
   const savedToken = sessionStorage.getItem('dash_auth_token');
@@ -231,12 +232,16 @@ function route(){
   if (!m && MENUS.length > 0) m = MENUS[0];
   if (!m) return;
 
+  // 설정 화면이 아닌 다른 곳으로 이동할 경우 편집 상태 초기화
+  if (m.view !== 'settings' && m.id !== 'prefs') {
+    isEditingSettings = false;
+  }
+
   renderNav(m.id || m.view);
   $('#title').textContent = m.label;
   document.title = m.label + ' · 대시보드';
 
   if (m.view === 'settings' || m.id === 'prefs') {
-    main.style.padding = '24px';
     main.innerHTML = renderSettingsView();
   } else if (m.url && m.url.trim() !== '') {
     main.style.padding = '0';
@@ -265,8 +270,13 @@ function route(){
 function renderSettingsView() {
   const iconNames = { home: '홈', users: '사용자', chart: '차트', settings: '설정', file: '문서', globe: '웹', cart: '장바구니', bell: '알림' };
   
-  // 데이터 순서와 상관없이 'prefs' ID를 가진 메뉴를 항상 마지막으로 보내는 정렬 처리
-  const sortedMenus = [...MENUS].sort((a, b) => {
+  // 최초 설정 진입 시점에만 원본 MENUS를 복사해서 임시 편집 배열 초기화
+  if (!isEditingSettings) {
+    editMenus = JSON.parse(JSON.stringify(MENUS));
+    isEditingSettings = true;
+  }
+
+  const sortedMenus = [...editMenus].sort((a, b) => {
     if (a.id === 'prefs') return 1;
     if (b.id === 'prefs') return -1;
     return 0;
@@ -283,24 +293,24 @@ function renderSettingsView() {
           </thead>
           <tbody>
             ${sortedMenus.map((m) => {
-              // 원본 MENUS 배열에서의 실제 인덱스를 찾아야 수정/삭제가 정확히 연동됩니다.
-              const i = MENUS.findIndex(item => item === m);
+              // editMenus 배열 내에서의 실제 인덱스를 찾아 조작
+              const i = editMenus.findIndex(item => item === m);
               return `
               <tr>
                 <td data-label="아이콘">
-                  <select class="in" onchange="MENUS[${i}].icon=this.value">
+                  <select class="in" onchange="editMenus[${i}].icon=this.value">
                     ${Object.keys(iconNames).map(k => `<option value="${k}" ${m.icon === k ? 'selected' : ''}>${iconNames[k]}</option>`).join('')}
                   </select>
                 </td>
-                <td data-label="이름"><input class="in" value="${esc(m.label)}" onchange="MENUS[${i}].label=this.value.trim()"></td>
-                <td data-label="페이지 URL"><input class="in" value="${esc(m.url)}" placeholder="https://..." onchange="MENUS[${i}].url=this.value.trim()"></td>
+                <td data-label="이름"><input class="in" value="${esc(m.label)}" onchange="editMenus[${i}].label=this.value.trim()"></td>
+                <td data-label="페이지 URL"><input class="in" value="${esc(m.url)}" placeholder="https://..." onchange="editMenus[${i}].url=this.value.trim()"></td>
                 <td data-label="열기 방식">
-                  <select class="in" onchange="MENUS[${i}].target=this.value">
+                  <select class="in" onchange="editMenus[${i}].target=this.value">
                     <option value="embed" ${m.target !== 'blank' ? 'selected' : ''}>메인 섹션</option>
                     <option value="blank" ${m.target === 'blank' ? 'selected' : ''}>새 탭</option>
                   </select>
                 </td>
-                <td data-label="관리"><button class="btn" style="width:100%;justify-content:center;" onclick="MENUS.splice(${i},1); main.innerHTML=renderSettingsView();">삭제</button></td>
+                <td data-label="관리"><button class="btn" style="width:100%;justify-content:center;" onclick="editMenus.splice(${i},1); main.innerHTML=renderSettingsView();">삭제</button></td>
               </tr>
             `;}).join('')}
           </tbody>
@@ -315,15 +325,33 @@ function renderSettingsView() {
 }
 
 function addDashboardMenu() {
-  const settingsIndex = MENUS.findIndex(m => m.view === 'settings' || m.id === 'prefs');
-  const newMenu = { id: 'menu-' + Date.now().toString(36), label: '새 메뉴', icon: 'file', view: '', url: '', target: 'embed', locked: false };
+  // 1. 고유 ID 생성 (식별용)
+  const newMenuId = 'menu-' + Date.now().toString(36);
+  const settingsIndex = editMenus.findIndex(m => m.view === 'settings' || m.id === 'prefs');
+  const newMenu = { id: newMenuId, label: '', icon: 'file', view: '', url: '', target: 'embed', locked: false };
 
   if (settingsIndex !== -1) {
-    MENUS.splice(settingsIndex, 0, newMenu);
+    editMenus.splice(settingsIndex, 0, newMenu);
   } else {
-    MENUS.push(newMenu);
+    editMenus.push(newMenu);
   }
+  
+  // 2. 뷰 렌더링
   main.innerHTML = renderSettingsView();
+
+  // 3. 방금 추가된 항목의 ID를 기반으로 정확한 입력창(input) 찾기
+  setTimeout(() => {
+    const targetRow = main.querySelector(`.setting-table tbody tr[data-id="${newMenuId}"]`) || 
+                      (settingsIndex !== -1 ? main.querySelectorAll('.setting-table tbody tr')[settingsIndex] : main.querySelector('.setting-table tbody tr:last-child'));
+                      
+    if (targetRow) {
+      const inputField = targetRow.querySelector('input');
+      if (inputField) {
+        inputField.focus();
+        inputField.select();
+      }
+    }
+  }, 0);
 }
 
 async function saveDashboardMenus() {
@@ -337,9 +365,13 @@ async function saveDashboardMenus() {
     const response = await fetch(GAS_WEB_APP_URL, {
       method: 'POST',
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(MENUS)
+      body: JSON.stringify(editMenus)
     });
     
+    // 저장 성공 시 원본 MENUS에 반영하고 편집 상태 종료
+    MENUS = JSON.parse(JSON.stringify(editMenus));
+    isEditingSettings = false;
+
     alert('설정이 저장되었습니다!');
     location.reload();
   } catch (err) {
