@@ -256,7 +256,7 @@ function route(){
       }
     }
 
-    main.innerHTML = `<div class="frame-wrap"><iframe src="${esc(targetUrl)}" title="${esc(m.label)}" sandbox="allow-clipboard-write allow-scripts allow-same-origin allow-popups allow-forms allow-modals"></iframe></div>`;
+    main.innerHTML = `<div class="frame-wrap"><iframe src="${esc(targetUrl)}" title="${esc(m.label)}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"></iframe></div>`;
   } else {
     main.style.padding = '';
     const viewFunc = VIEWS[m.view];
