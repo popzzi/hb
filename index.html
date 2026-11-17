@@ -196,7 +196,7 @@ function showPinModal(errorMsg = "") {
       <div style="font-size:32px;margin-bottom:8px;">🔒</div>
       <h2 style="margin:0 0 8px;color:var(--text);font-size:18px;">대시보드 잠금</h2>
       <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">접속 PIN 번호를 입력하세요.</p>
-      <input type="password" id="pinInput" placeholder="PIN 번호 입력" style="width:100%;padding:12px;margin-bottom:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;text-align:center;font-size:16px;letter-spacing:4px;" autofocus>
+      <input type="password" id="pinInput" placeholder="PIN 번호 입력" inputmode="numeric" pattern="[0-9]*" style="width:100%;padding:12px;margin-bottom:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;text-align:center;font-size:16px;letter-spacing:4px;" autofocus>
       ${errorMsg ? `<div style="color:#ef4444;font-size:13px;margin-bottom:12px;">${errorMsg}</div>` : ''}
       <button id="verifyBtn" onclick="verifyPin()" style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">확인</button>
     </div>
