@@ -238,7 +238,19 @@ function route(){
     main.innerHTML = renderSettingsView();
   } else if (m.url && m.url.trim() !== '') {
     main.style.padding = '0';
-    main.innerHTML = `<div class="frame-wrap"><iframe src="${esc(m.url)}" title="${esc(m.label)}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"></iframe></div>`;
+    
+    let targetUrl = m.url.trim();
+    
+    // ⭐️ 구글 앱스 스크립트(GAS) 등 외부 웹 앱 링크일 때만 세션 토큰을 동적으로 결합
+    if (targetUrl.includes('script.google.com') || targetUrl.includes('/exec')) {
+      const token = sessionStorage.getItem('dash_auth_token') || '';
+      if (token) {
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        targetUrl = `${targetUrl}${separator}token=${encodeURIComponent(token)}`;
+      }
+    }
+
+    main.innerHTML = `<div class="frame-wrap"><iframe src="${esc(targetUrl)}" title="${esc(m.label)}" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"></iframe></div>`;
   } else {
     main.style.padding = '';
     const viewFunc = VIEWS[m.view];
